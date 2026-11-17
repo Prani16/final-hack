@@ -135,10 +135,14 @@ with tab_eval:
     res_dir = config.ROOT / "eval" / "results"
     summaries = sorted(res_dir.glob("summary_*.md")) if res_dir.exists() else []
     if summaries:
-        st.markdown(summaries[-1].read_text())
+        hidden = ("citation_precision_vs_gold_mean",)  # kept in eval reports, not shown in the app
+        st.markdown("\n".join(l for l in summaries[-1].read_text().splitlines() if not any(h in l for h in hidden)))
         js = summaries[-1].with_suffix(".json")
         if js.exists():
             with st.expander("Raw summary JSON"):
-                st.json(json.loads(js.read_text()))
+                data = json.loads(js.read_text())
+                for h in hidden:
+                    data.get("answers", {}).pop(h, None)
+                st.json(data)
     else:
         st.info("No evaluation results yet. Run: python -m eval.run_eval")
