@@ -42,7 +42,7 @@ def show_answer(res: dict):
         st.error("Not enough evidence in the papers")
     text = res["answer"]
     num = {s["chunk_id"]: s["n"] for s in res.get("sources", [])}
-    text = re.sub(r"\[([A-Za-z0-9_\-]+)\]", lambda m: f"**[{num[m.group(1)]}]**" if m.group(1) in num else "", text)
+    text = re.sub(r"\[([A-Za-z0-9_\-]+)\]", lambda m: f" [{num[m.group(1)]}]" if m.group(1) in num else "", text)
     st.markdown(text)
     if res.get("missing_information") and res.get("insufficient_evidence"):
         st.caption("Missing: " + res["missing_information"])
