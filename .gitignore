@@ -1,0 +1,12 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+venv/
+index/
+data/papers/*.pdf
+data/figures/
+data/pages/
+data/processed/
+eval/results/
+.DS_Store
