@@ -91,6 +91,27 @@ def _mock_answer(chunks: list[dict], qtype: str) -> dict:
             "ai_suggestions": ["[mock] Example research direction"] if qtype == "synthesis" else []}
 
 
+def _salvage(raw: str) -> dict:
+    """Recover an answer from a reply that should have been JSON but is broken, cut off,
+    or wrapped in a code block. Falls back to the raw text."""
+    try:
+        out = llm_client.parse_json(raw)
+        if isinstance(out, dict) and "answer" in out:
+            return out
+    except Exception:
+        pass
+    m = re.search(r'"answer"\s*:\s*"((?:[^"\\]|\\.)*)', raw, flags=re.S)
+    if m:
+        body = m.group(1)
+        try:
+            text = json.loads(f'"{body}"', strict=False)
+        except json.JSONDecodeError:
+            text = body.replace("\\n", "\n").replace('\\"', '"')
+        return {"answer": text, "insufficient_evidence": False, "ai_suggestions": []}
+    return {"answer": re.sub(r"^```\w*\s*|\s*```$", "", raw.strip()), "insufficient_evidence": False,
+            "ai_suggestions": []}
+
+
 def _log(record: dict) -> None:
     try:
         with open(QUERY_LOG, "a", encoding="utf-8") as f:
@@ -151,10 +172,10 @@ def answer(question: str, paper_ids: list[str] | None = None, mode: str = "auto"
         try:
             out = llm_client.generate(prompt, system=SYSTEM, images=images, json_output=True,
                                       mock=lambda: _mock_answer(chunks, qtype))
-        except ValueError:  # bad JSON: fall back to a plain-text answer under the same rules
-            raw = llm_client.generate(prompt + "\n\nReply in plain Markdown only, not JSON.",
+        except ValueError:  # bad or cut-off JSON: retry as plain text, then salvage whatever comes back
+            raw = llm_client.generate(prompt + "\n\nReply in plain Markdown only, not JSON. Keep any table under 8 rows.",
                                       system=SYSTEM, images=images)
-            out = {"answer": raw, "insufficient_evidence": False, "ai_suggestions": []}
+            out = _salvage(raw)
     except Exception as exc:
         log.exception("LLM call failed")
         result.update(answer="The answer could not be generated right now (model error). Please try again.",
