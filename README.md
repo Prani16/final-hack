@@ -165,7 +165,7 @@ facts and **gold chunk ids**, which you fill in with `python -m eval.label_helpe
 
 `python -m eval.run_eval --judge` reports:
 * **Retrieval ablation**: Recall@5 and MRR@10 for dense vs hybrid vs hybrid + rerank
-* **Answers**: key-fact coverage, citation precision against gold, answers with citations, invalid citations removed,
+* **Answers**: key-fact coverage, answers with citations, invalid citations removed,
   correct refusals / false refusals, injection pass, mean latency
 * **LLM-judge faithfulness** (share of claims supported by the cited sources). This is a signal, not ground truth.
 * A CSV with empty `human_correct` and `human_citations_ok` columns for the manual check

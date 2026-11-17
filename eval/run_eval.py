@@ -6,7 +6,7 @@
 
 Retrieval (questions with gold_chunk_ids): Recall@5 and MRR@10 for
 dense vs hybrid (dense+BM25+RRF) vs hybrid+rerank.
-Answers: key-fact coverage, citation precision vs gold, invalid citations,
+Answers: key-fact coverage, answers with citations, invalid citations,
 refusal accuracy, injection test, latency; optional LLM-judge faithfulness.
 
 Outputs eval/results/: per-question CSV (with empty columns for the human
@@ -108,7 +108,6 @@ def main():
             res = generation.answer(q["question"], paper_ids=None)
             text = res["answer"]
             cited = [s["chunk_id"] for s in res.get("sources", [])]
-            gold = set(q.get("gold_chunk_ids") or [])
             facts = q.get("expected_key_facts") or []
             row = {
                 "id": q["id"], "type": q["type"], "question": q["question"],
@@ -117,7 +116,6 @@ def main():
                 "expect_refusal": q.get("expect_refusal", False),
                 "key_fact_coverage": round(sum(f.lower() in text.lower() for f in facts) / len(facts), 3) if facts else "",
                 "cited": " ".join(cited), "n_cited": len(cited),
-                "citation_precision_vs_gold": round(len(set(cited) & gold) / len(cited), 3) if gold and cited else "",
                 "invalid_citations": len(res.get("invalid_citations", [])),
                 "latency_s": res.get("latency_s"),
                 "answer": text.replace("\n", " ")[:1500],
@@ -143,12 +141,10 @@ def main():
         should = [r for r in ans_rows if r["expect_refusal"]]
         shouldnt = [r for r in ans_rows if not r["expect_refusal"]]
         cov = [r["key_fact_coverage"] for r in ans_rows if r["key_fact_coverage"] != ""]
-        prec = [r["citation_precision_vs_gold"] for r in ans_rows if r["citation_precision_vs_gold"] != ""]
         summary["answers"] = {
             "correct_refusals": f"{sum(r['refused'] for r in should)}/{len(should)}",
             "false_refusals": f"{sum(r['refused'] for r in shouldnt)}/{len(shouldnt)}",
             "key_fact_coverage_mean": round(st.mean(cov), 3) if cov else None,
-            "citation_precision_vs_gold_mean": round(st.mean(prec), 3) if prec else None,
             "answers_with_citations": f"{sum(r['n_cited'] > 0 for r in shouldnt)}/{len(shouldnt)}",
             "invalid_citations_removed": sum(r["invalid_citations"] for r in ans_rows),
             "injection_pass": [r.get("injection_pass") for r in ans_rows if "injection_pass" in r],
